@@ -62,8 +62,9 @@ ln -s "$PWD/gpt-image-bridge/skills/gpt-image-bridge/bin/gpt-image-2" /usr/local
 Then tell your agent it exists. Most agents take a rules or instructions file — `.cursorrules`, `AGENTS.md`, `GEMINI.md`, a system prompt — and a couple of lines is enough:
 
 ```
-To generate an image, run: gpt-image-2 "<detailed prompt>" <absolute-output-path.png> [--size WxH]
+To generate an image, run: gpt-image-2 "<detailed prompt>" <absolute-output-path.png> [--size WxH] [--ref <image> ...]
 Prompts should be dense and art-directed. Calls take 4-6 minutes, so allow a long timeout.
+To base the image on existing ones, pass each with --ref and say in the prompt what to take from it.
 Read the PNG back afterward to check the result.
 ```
 
@@ -106,6 +107,20 @@ If you installed via `install.sh` and didn't symlink it onto your `PATH`, the wr
 Optional flags:
 
 - `--size WxH` — request a specific aspect ratio (e.g. `--size 1792x1024`). If omitted, the model picks its own dimensions.
+- `--ref <image>` — attach a reference image (PNG, JPEG or WebP); repeat for several. It is passed to `codex exec --image` and handed to the image tool as an input image. The file must exist, otherwise the wrapper exits with code 2 before calling codex.
+
+### Reference images
+
+Use `--ref` when the new image has to match something that already exists — a mascot, a logo, a product, a colour palette. The prompt decides what is taken from each reference, so name them in order:
+
+```bash
+gpt-image-2 \
+  "The mascot from reference 1, unchanged in shape and colours, waving from a sunny window sill. Flat vector style, plain cream background, no text." \
+  /tmp/mascot-window.png \
+  --ref ./mascot-cropped.png
+```
+
+Crop the reference to the element that matters before passing it. A full screenshot or page invites the model to copy its layout, background and text along with the part you wanted.
 
 On success the wrapper prints the absolute output path. On failure it prints the tail of the codex log to stderr.
 

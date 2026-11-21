@@ -17,6 +17,7 @@ Invoke the wrapper any time the user wants an image produced. Examples:
 - "Make me a mockup of..."
 - "I need an avatar / logo / illustration / diagram of..."
 - "Show me what X would look like"
+- "Put this character / logo / product in a new scene" — pass the existing image with `--ref`
 - A design-taste skill (e.g. `image-taste-frontend` from [Leonxlnx/taste-skill](https://github.com/Leonxlnx/taste-skill)) is driving an image-first workflow and needs an image generated
 
 Do **not** invoke it for:
@@ -27,14 +28,23 @@ Do **not** invoke it for:
 ## How to call it
 
 ```bash
-~/.claude/skills/gpt-image-bridge/bin/gpt-image-2 "<prompt>" <absolute-output-path.png> [--size WxH]
+~/.claude/skills/gpt-image-bridge/bin/gpt-image-2 "<prompt>" <absolute-output-path.png> [--size WxH] [--ref <image> ...]
 ```
 
 - **Prompt** should be dense and art-directed: composition, lighting, camera/lens, mood, style reference. Terse prompts produce generic output.
 - **Output path** must be absolute. `/tmp/` works for throwaways; a project-local `design/` directory for kept assets.
+- **Reference images are optional** — `--ref <path>` attaches a PNG, JPEG or WebP to the request; repeat it for several. Say in the prompt what to take from each one, in order ("reference 1: the mascot's look; reference 2: the colour palette"). Crop each reference to the element that matters before passing it — a whole screenshot invites the model to copy its layout and text. A missing file (or a path containing a comma) stops the wrapper with exit code 2 before codex runs.
 - **Size is optional** — if omitted, the model chooses its own dimensions. Only pass `--size` when the user specifies one or the layout requires a particular aspect ratio.
 - Calls routinely take 4–6 minutes (codex reasons before calling the image tool; exact latency depends on the user's codex `reasoning_effort` config). Set the `Bash` tool timeout to the **maximum, 600000 ms**, or run it in the background and poll.
 - The wrapper prints the absolute output path to stdout on success, or a tail of the codex log to stderr on failure.
+
+Example with a reference image:
+
+```bash
+~/.claude/skills/gpt-image-bridge/bin/gpt-image-2 \
+  "The mascot from reference 1, unchanged in shape and colours, waving from a sunny window sill. Flat vector style, plain cream background, no text." \
+  /tmp/mascot-window.png --ref /path/to/mascot-cropped.png
+```
 
 After the wrapper returns, `Read` the PNG back into context so you can analyze it before coding or responding.
 
@@ -46,7 +56,7 @@ The wrapper runs:
 codex exec --skip-git-repo-check -s workspace-write -C <private-temp-dir> "<augmented prompt>"
 ```
 
-with explicit instructions to use the `image_generation` tool (not fabricate a PNG in Python — codex will try that if you let it). Codex saves the PNG as `out.png` inside the private temp dir — the only place its sandbox is guaranteed to allow writes — and the wrapper copies it to the requested output path. Codex never handles the final path, so sandbox denials and Windows/POSIX path mismatches can't occur, and the previous output file is only overwritten once a new image actually exists.
+with explicit instructions to use the `image_generation` tool (not fabricate a PNG in Python — codex will try that if you let it). With `--ref`, each reference is made absolute and passed as `--image=<file>` before a `--` that ends option parsing, and the prompt gains a `REFERENCES:` line telling codex to hand the images to the image tool as input images; without `--ref` the command is exactly as shown. Codex saves the PNG as `out.png` inside the private temp dir — the only place its sandbox is guaranteed to allow writes — and the wrapper copies it to the requested output path. Codex never handles the final path, so sandbox denials and Windows/POSIX path mismatches can't occur, and the previous output file is only overwritten once a new image actually exists.
 
 ## Prerequisites (user-side)
 

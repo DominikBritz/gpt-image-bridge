@@ -4,15 +4,17 @@
 # The gpt-image-2 executable name is retained for existing callers.
 # Uses the logged-in ChatGPT subscription — no API key required.
 #
-# Usage: gpt-image-2 "<prompt>" <output.png> [--size WxH]
+# Usage: gpt-image-2 "<prompt>" <output.png> [--size WxH] [--ref <image> ...]
 #
 # If --size is omitted, the model picks its own dimensions.
+# --ref attaches a reference image (PNG, JPEG or WebP) to the request; repeat it
+# for several. The prompt should say what to take from each reference, in order.
 # Works on macOS, Linux, and Windows (Git Bash or WSL).
 
 set -euo pipefail
 
 if [[ $# -lt 2 ]]; then
-  echo "usage: gpt-image-2 \"<prompt>\" <output.png> [--size WxH]" >&2
+  echo "usage: gpt-image-2 \"<prompt>\" <output.png> [--size WxH] [--ref <image> ...]" >&2
   exit 2
 fi
 
@@ -21,9 +23,26 @@ out="$2"
 shift 2
 
 size=""
+refs=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --size) size="$2"; shift 2 ;;
+    --ref)
+      if [[ $# -lt 2 ]]; then
+        echo "gpt-image-2: --ref needs an image path" >&2
+        exit 2
+      fi
+      if [[ ! -f "$2" ]]; then
+        echo "gpt-image-2: reference image not found: $2" >&2
+        exit 2
+      fi
+      # codex splits --image values on commas, so such a path would arrive broken.
+      if [[ "$2" == *,* ]]; then
+        echo "gpt-image-2: reference image path must not contain a comma: $2" >&2
+        exit 2
+      fi
+      refs+=("$(cd "$(dirname "$2")" && pwd)/$(basename "$2")")
+      shift 2 ;;
     *) echo "gpt-image-2: unknown arg: $1" >&2; exit 2 ;;
   esac
 done
@@ -62,9 +81,27 @@ if command -v cygpath >/dev/null 2>&1; then
   codex_workdir="$(cygpath -m "$workdir")"
 fi
 
+# Reference images are attached with --image=<file>. The "=" form keeps the
+# multi-value option from consuming the prompt, and "--" ends option parsing.
+# Without --ref, ref_args stays empty and the codex call is unchanged.
+ref_line=""
+ref_args=()
+if [[ ${#refs[@]} -gt 0 ]]; then
+  ref_line="
+REFERENCES: ${#refs[@]} reference image(s) are attached to this message, in the order given. Pass them to the image_generation tool as input images and use them exactly as the PROMPT describes. Do not copy text or lettering from them unless the PROMPT asks for it."
+  for ref in "${refs[@]}"; do
+    # Same Windows path handling as the workdir above.
+    if command -v cygpath >/dev/null 2>&1; then
+      ref="$(cygpath -m "$ref")"
+    fi
+    ref_args+=("--image=$ref")
+  done
+  ref_args+=(--)
+fi
+
 full_prompt="Use your image_generation tool to create an image.
 
-PROMPT: ${prompt}${size_line}
+PROMPT: ${prompt}${size_line}${ref_line}
 
 Requirements:
 - You MUST call the image_generation tool.
@@ -72,7 +109,7 @@ Requirements:
 - After the tool produces the image, save the PNG as out.png in your current working directory. Use the relative path out.png, not an absolute path.
 - Reply with only the file name of the saved PNG, nothing else."
 
-if ! codex exec --skip-git-repo-check -s workspace-write -C "$codex_workdir" "$full_prompt" </dev/null >"$log" 2>&1; then
+if ! codex exec --skip-git-repo-check -s workspace-write -C "$codex_workdir" ${ref_args[@]+"${ref_args[@]}"} "$full_prompt" </dev/null >"$log" 2>&1; then
   echo "gpt-image-2: codex exec failed. Last 30 lines of log:" >&2
   tail -n 30 "$log" >&2
   echo "(full log: $log)" >&2
