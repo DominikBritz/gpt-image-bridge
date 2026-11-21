@@ -1,8 +1,10 @@
 # gpt-image-bridge
 
-Generate images with OpenAI's **GPT Image 2.5** from a CLI coding agent by bridging through the [`codex` CLI](https://github.com/openai/codex). Uses your ChatGPT subscription — **no API key required, no per-image billing.**
+Generate images with OpenAI's **GPT Image** (whichever version Codex serves) from a CLI coding agent by bridging through the [`codex` CLI](https://github.com/openai/codex). Uses your ChatGPT subscription — **no API key required, no per-image billing.**
 
 The bridge is a standalone bash script — [Claude Code](https://docs.claude.com/en/docs/claude-code), Cursor, Gemini CLI, aider, or any other agent that can run a shell command can call it. Claude Code just gets the nicest ergonomics, because the included installer registers it as a skill so Claude reaches for it unprompted.
+
+This is a fork of [oakplank/gpt-image-bridge](https://github.com/oakplank/gpt-image-bridge) that adds `--ref` for reference images (see [Reference images](#reference-images)). It is maintained independently.
 
 Works with any design skill (like the [`image-taste-frontend`](https://github.com/Leonxlnx/taste-skill) skill from [Leonxlnx/taste-skill](https://github.com/Leonxlnx/taste-skill)) or on its own whenever your agent needs to produce a picture.
 
@@ -40,7 +42,7 @@ codex features list | grep image_generation    # should be: stable true
 ### Claude Code
 
 ```bash
-git clone https://github.com/oakplank/gpt-image-bridge.git
+git clone https://github.com/DominikBritz/gpt-image-bridge.git
 cd gpt-image-bridge
 ./install.sh
 ```
@@ -52,7 +54,7 @@ The installer copies the skill into `~/.claude/skills/gpt-image-bridge/` and mak
 There's nothing to install — the wrapper is a self-contained bash script with no dependencies beyond `codex`. Clone the repo, make it executable, and put it somewhere on your `PATH`:
 
 ```bash
-git clone https://github.com/oakplank/gpt-image-bridge.git
+git clone https://github.com/DominikBritz/gpt-image-bridge.git
 chmod +x gpt-image-bridge/skills/gpt-image-bridge/bin/gpt-image-2
 ln -s "$PWD/gpt-image-bridge/skills/gpt-image-bridge/bin/gpt-image-2" /usr/local/bin/gpt-image-2
 ```
@@ -75,14 +77,14 @@ Read the PNG back afterward to check the result.
 Drop the block below into your Claude Code session (or any shell-capable AI agent) and it will install the skill for you, verify prereqs, and offer a smoke test.
 
 ```
-Please install the gpt-image-bridge skill from https://github.com/oakplank/gpt-image-bridge so I can generate images with GPT Image 2.5 through Codex and my ChatGPT subscription.
+Please install the gpt-image-bridge skill from https://github.com/DominikBritz/gpt-image-bridge so I can generate images with GPT Image through Codex and my ChatGPT subscription.
 
 1. Check that the `codex` CLI is installed and logged in:
      codex login status
    It should say "Logged in using ChatGPT". If codex is missing or not logged in, stop and tell me to run `brew install codex && codex login` first.
 
 2. Clone and install:
-     git clone https://github.com/oakplank/gpt-image-bridge.git /tmp/gpt-image-bridge
+     git clone https://github.com/DominikBritz/gpt-image-bridge.git /tmp/gpt-image-bridge
      cd /tmp/gpt-image-bridge && ./install.sh
 
 3. Verify ~/.claude/skills/gpt-image-bridge/bin/gpt-image-2 exists and is executable.
@@ -123,6 +125,10 @@ gpt-image-2 \
 Crop the reference to the element that matters before passing it. A full screenshot or page invites the model to copy its layout, background and text along with the part you wanted.
 
 On success the wrapper prints the absolute output path. On failure it prints the tail of the codex log to stderr.
+
+## Which image model runs?
+
+Codex decides, not this wrapper. Its built-in image tool sends a fixed model name (`gpt-image-2` in the Codex source) with `quality: auto`, and OpenAI's backend chooses what actually serves that request. There is no Codex option or config key to pick an image model, so the API variants **Flare** and **Sunburst** of GPT Image 2.5/2.6 cannot be selected through this bridge, and which version you get cannot be verified from the client ([openai/codex#43965](https://github.com/openai/codex/issues/43965)). If you need a specific model, call the [Images API](https://platform.openai.com/docs/api-reference/images) directly with an API key.
 
 ## Why go through codex instead of calling the API directly?
 

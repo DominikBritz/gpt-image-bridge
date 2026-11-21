@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Generate an image via Codex's image_generation tool (GPT Image 2.5).
+# Generate an image via Codex's image_generation tool (GPT Image; Codex picks the version).
 # Codex selects the image backend; this wrapper does not pin a model.
 # The gpt-image-2 executable name is retained for existing callers.
 # Uses the logged-in ChatGPT subscription — no API key required.

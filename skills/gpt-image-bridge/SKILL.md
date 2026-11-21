@@ -1,6 +1,6 @@
 ---
 name: gpt-image-bridge
-description: Use when the user asks for an image, mockup, logo, avatar, hero image, illustration, diagram, visual reference, or any generated picture, or when a design skill needs an image produced. Bridges to OpenAI's GPT Image 2.5 through the codex CLI using a ChatGPT subscription — no API key.
+description: Use when the user asks for an image, mockup, logo, avatar, hero image, illustration, diagram, visual reference, or any generated picture, or when a design skill needs an image produced. Bridges to OpenAI's GPT Image (the version Codex serves) through the codex CLI using a ChatGPT subscription — no API key.
 ---
 
 # gpt-image-bridge
